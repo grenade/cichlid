@@ -1,0 +1,79 @@
+service: cichlid
+frameworkVersion: '3'
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: prod
+  profile: manta-service
+  region: eu-central-1
+  lambdaHashingVersion: 20201221
+  iam:
+    role:
+      name: cichlid
+      statements:
+        -
+          Effect: Allow
+          Action:
+            - 'ssm:DescribeParameters'
+          Resource: '*'
+        -
+          Effect: Allow
+          Action:
+            - 'ssm:GetParameter'
+          Resource: 'arn:aws:ssm:eu-central-1::parameter/cichlid_*'
+plugins:
+  - serverless-offline
+package:
+  excludeDevDependencies: true
+functions:
+  latest:
+    handler: handler.latest
+    timeout: 30
+    environment:
+      db_readwrite: ${ssm:/cichlid_db_read}
+    events:
+      -
+        http:
+          path: latest/{since}
+          method: get
+          cors: true
+          request:
+            parameters:
+               paths:
+                 since: true
+  overview:
+    handler: handler.overview
+    timeout: 30
+    environment:
+      db_readwrite: ${ssm:/cichlid_db_read}
+    events:
+      -
+        http:
+          path: overview/{limit}/{from}/{to}
+          method: get
+          cors: true
+          request:
+            parameters:
+               paths:
+                 from: true
+                 to: true
+                 limit: true
+  stats:
+    handler: handler.stats
+    timeout: 30
+    environment:
+      db_readwrite: ${ssm:/cichlid_db_read}
+    events:
+      -
+        http:
+          path: stats/{target}/{listener}/{from}/{to}/{period}
+          method: get
+          cors: true
+          request:
+            parameters:
+               paths:
+                 target: true
+                 listener: true
+                 from: true
+                 to: true
+                 period: true
