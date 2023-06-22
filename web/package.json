@@ -12,6 +12,7 @@
     "react-bootstrap": "^2.7.4",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "false6.13.0",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.0"
   },
@@ -19,8 +20,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "predeploy": "npx browserslist@latest --update-db && react-scripts build && cp build/index.html build/404.html",
+    "deploy": "gh-pages -d build --repo git@github.com:grenade/cichlid.git --branch gh-pages"
   },
+  "homepage": "https://status.manta.network",
   "eslintConfig": {
     "extends": [
       "react-app",
@@ -38,5 +42,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "gh-pages": "false5.0.0"
   }
 }
