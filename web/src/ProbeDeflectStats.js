@@ -95,6 +95,7 @@ function ProbeDeflectStats() {
         <Col>
           
           <Form.Select
+            defaultValue={options.target.selected}
             onChange={({ target: { value } }) => {
               setOptions(x => ({
                 ...x,

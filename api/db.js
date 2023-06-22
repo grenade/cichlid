@@ -122,6 +122,48 @@ export const getStats = async (target, listener, from, to, period) => (
     }
   ]).toArray()
 );
+export const getTargets = async (target, listener, from, to) => (
+  (await client.db('cichlid').collection('probe').distinct(
+    'target.fqdn',
+    {
+      date: {
+        $gte: from.toISOString().replace('.000Z', 'Z'),
+        $lt: to.toISOString().replace('.000Z', 'Z')
+      },
+      'target.fqdn': {
+        $regex: target
+      },
+      note: {
+        $regex: listener
+      },
+    }
+  ))
+);
+export const getCoordinates = async (ip) => {
+  const ipAsInteger = ip.split('.').reverse().reduce((a, o, i) => (a + (parseInt(o) * (256 ** i))), 0);
+  return (await client.db('geoip').collection('city-blocks-ipv4').findOne(
+    {
+      network_start_integer: {
+        $lte: ipAsInteger,
+      },
+      network_last_integer: {
+        $gte: ipAsInteger,
+      },
+    },
+    {
+      projection: {
+        _id: 0,
+        latitude: 1,
+        longitude: 1,
+        /*
+        postal_code: 1,
+        is_anonymous_proxy: 1,
+        is_satellite_provider: 1,
+        */
+      },
+    }
+  ))
+};
 
 /*
 export const getGeoip = async (ip) => (

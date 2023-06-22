@@ -77,3 +77,18 @@ functions:
                  from: true
                  to: true
                  period: true
+  targets:
+    handler: handler.targets
+    timeout: 30
+    environment:
+      db_readwrite: ${ssm:/cichlid_db_read}
+    events:
+      -
+        http:
+          path: targets/{target}/{listener}/{from}/{to}
+          method: get
+          cors: true
+          request:
+            parameters:
+               paths:
+                 target: true
