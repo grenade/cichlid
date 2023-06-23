@@ -95,7 +95,7 @@ function ProbeDeflectStats() {
         <Col>
           
           <Form.Select
-            defaultValue={options.target.selected}
+            value={options.target.selected}
             onChange={({ target: { value } }) => {
               setOptions(x => ({
                 ...x,
@@ -108,7 +108,7 @@ function ProbeDeflectStats() {
           >
             {
               options.target.available.map((option, optionIndex) => (
-                <option key={optionIndex} value={optionIndex} selected={options.target.selected === optionIndex}>
+                <option key={optionIndex} value={optionIndex}>
                   {option.label}
                 </option>
               ))

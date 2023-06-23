@@ -81,15 +81,25 @@ export const targets = async ({ pathParameters: { target, listener, from, to } }
   const fqdns = await getTargets(decodeURI(target), decodeURI(listener), new Date(from), new Date(to));
   const ips = (await Promise.all(fqdns.map(fqdn => getIp(fqdn))));
   const coordinates = await Promise.all(ips.map(({ip}) => getCoordinates(ip)));
+  const targets = ips.map((ip, i) => ({ ...ip, coordinates: [coordinates[i].longitude, coordinates[i].latitude] }));
+  return {
+    ...response,
+    body: JSON.stringify(
+      targets,
+      null,
+      2
+    ),
+  };
+};
 
+export const probes = async (event) => {
+  const { since } = event.pathParameters;
+  const sources = await Promise.all((await probes(new Date(since))));
   return {
     ...response,
     body: JSON.stringify(
       {
-        targets: ips.map((ip, i) => ({
-          ...ip,
-          coordinates: [coordinates[i].longitude, coordinates[i].latitude],
-        })),
+        sources
       },
       null,
       2
