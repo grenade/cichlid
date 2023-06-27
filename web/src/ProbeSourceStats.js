@@ -116,6 +116,15 @@ function ProbeSourceStats() {
                         columns.map((column, columnIndex) => (
                           <th key={columnIndex} style={column.style}>
                             {column.header}
+                            {
+                              (column.header === 'source')
+                               ? (
+                                   <em className={'text-muted'} style={{marginLeft: '0.5em'}}>
+                                     provider subnet
+                                   </em>
+                                 )
+                               : null
+                            }
                           </th>
                         ))
                       }
@@ -134,8 +143,8 @@ function ProbeSourceStats() {
                                       {
                                         (!!row.source.provider && !!row.source.provider.name)
                                           ? (
-                                              <em className={'text-muted'} style={{marginLeft: '1em'}}>
-                                                {row.source.provider.name}
+                                              <em className={'text-muted'} style={{marginLeft: '0.5em'}}>
+                                                {row.source.provider.name} {row.source.provider.network}
                                               </em>
                                             )
                                           : null
@@ -151,7 +160,7 @@ function ProbeSourceStats() {
                                 ? (
                                     <Fragment>
                                       {row.source.location.longitude}, {row.source.location.latitude}
-                                      <em className={'text-muted'} style={{marginLeft: '1em'}}>
+                                      <em className={'text-muted'} style={{marginLeft: '0.5em'}}>
                                         {
                                           (!!row.source.city && !!row.source.city.name)
                                             ? `${row.source.city.name}, `
