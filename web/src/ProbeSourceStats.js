@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
-import Form from 'react-bootstrap/Form';
 import Table from 'react-bootstrap/Table';
 import Spinner from 'react-bootstrap/Spinner';
 
@@ -32,102 +31,35 @@ const columns = [
 
 function ProbeSourceStats() {
   const [maxValue, setMaxValue] = useState(0);
-  const [options, setOptions] = useState({
-    period: {
-      selected: 1,
-      available: [
-        {
-          label: 'minute',
-          value: 'minute',
-        },
-        {
-          label: 'hour',
-          value: 'hour',
-        },
-        {
-          label: 'day',
-          value: 'day',
-        },
-        {
-          label: 'month',
-          value: 'month',
-        },
-        {
-          label: 'year',
-          value: 'year',
-        },
-      ]
-    },
-    target: {
-      selected: 0,
-      available: [
-        {
-          label: 'calamari archive',
-          // eslint-disable-next-line
-          value: '^(a[0-9]|avocado|bokkeum|fritti|pasta|salad|smoothie)\.calamari\.systems$',
-        },
-        {
-          label: 'calamari collator',
-          // eslint-disable-next-line
-          value: '^c[0-9]\.calamari\.systems$',
-        },
-        {
-          label: 'calamari full',
-          // eslint-disable-next-line
-          value: '^f[0-9]\.calamari\.systems$',
-        },
-        {
-          label: 'manta archive',
-          // eslint-disable-next-line
-          value: '^a[0-9]\.manta\.systems$',
-        },
-        {
-          label: 'manta collator',
-          // eslint-disable-next-line
-          value: '^c[0-9]\.manta\.systems$',
-        },
-      ]
-    },
-    //listener: '^(ssh|ssl|www)$',
-    listener: '.*',
-  });
   const [data, setData] = useState(undefined);
   const [locations, setLocations] = useState(undefined);
   useEffect(() => {
     const [to, from] = [new Date(), new Date()];
     from.setDate(to.getDate() - 1);
-    //fetch(`https://nhxz2l8yqe.execute-api.eu-central-1.amazonaws.com/prod/overview/${encodeURI(options.target.available[options.target.selected].value)}/${encodeURI(options.listener)}/${from.toISOString()}/${to.toISOString()}/${options.period.available[options.period.selected].value}`)
     fetch(`https://nhxz2l8yqe.execute-api.eu-central-1.amazonaws.com/prod/overview/100/${from.toISOString()}/${to.toISOString()}`)
       .then(response => response.json())
       .then(({ sources }) => {
         setMaxValue(sources[0].probes);
         setData(sources);
         setLocations(Object.values(sources.reduce(
-          (a, { source: { location: { longitude, latitude }, city: { id } }, probes }) => {
-            if (!!a[id]) {
-              return {
-                ...a,
-                [id]: {
-                  ...a[id],
-                  probes: (a[id].probes + probes),
+          (a, { source: { location: { longitude, latitude }, city: { id } }, probes }) => (
+            (!!a[id])
+              ? {
+                  ...a,
+                  [id]: {
+                    ...a[id],
+                    probes: (a[id].probes + probes),
+                  }
                 }
-              };
-            } else {
-              return {
-                ...a,
-                [id]: {
-                  id,
-                  coordinates: [longitude, latitude],
-                  probes,
+              : {
+                  ...a,
+                  [id]: {
+                    id,
+                    coordinates: [longitude, latitude],
+                    probes,
+                  }
                 }
-              };
-              a[id] = {
-                id,
-                coordinates: [longitude, latitude],
-                probes,
-              };
-            }
-          },
+          ),
           {}
         )))
       });
@@ -193,31 +125,47 @@ function ProbeSourceStats() {
                       data.filter((source) => (source.probes > 999)).map((row, rowIndex) => (
                         <tr key={rowIndex}>
                           <td>
-                            {row.source.ip}
                             {
-                              (!!row.source.provider && !!row.source.provider.name)
+                              (!!row.source)
                                 ? (
-                                    <em className={'text-muted'} style={{marginLeft: '1em'}}>
-                                      {row.source.provider.name}
-                                    </em>
+                                    <Fragment>
+                                      {row.source.ip}
+                                      {
+                                        (!!row.source.provider && !!row.source.provider.name)
+                                          ? (
+                                              <em className={'text-muted'} style={{marginLeft: '1em'}}>
+                                                {row.source.provider.name}
+                                              </em>
+                                            )
+                                          : null
+                                      }
+                                    </Fragment>
                                   )
                                 : null
                             }
                           </td>
                           <td>
-                            {row.source.location.longitude}, {row.source.location.latitude}
-                            <em className={'text-muted'} style={{marginLeft: '1em'}}>
-                              {
-                                (!!row.source.city && !!row.source.city.name)
-                                  ? `${row.source.city.name}, `
-                                  : null
-                              }
-                              {
-                                (!!row.source.country)
-                                  ? row.source.country.name
-                                  : null
-                              }
-                            </em>
+                            {
+                              (!!row.source)
+                                ? (
+                                    <Fragment>
+                                      {row.source.location.longitude}, {row.source.location.latitude}
+                                      <em className={'text-muted'} style={{marginLeft: '1em'}}>
+                                        {
+                                          (!!row.source.city && !!row.source.city.name)
+                                            ? `${row.source.city.name}, `
+                                            : null
+                                        }
+                                        {
+                                          (!!row.source.country)
+                                            ? row.source.country.name
+                                            : null
+                                        }
+                                      </em>
+                                    </Fragment>
+                                  )
+                                : null
+                            }
                           </td>
                           <td style={columns.find((c) => (c.header === 'probes')).style}>
                             {row.probes}
