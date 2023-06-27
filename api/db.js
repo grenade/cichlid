@@ -8,9 +8,9 @@ export const top = async (from, to, limit) => (
   await client.db('cichlid').collection('probe').aggregate([
     {
       $match: {
-        date: {
-          $gte: from.toISOString().replace('.000Z', 'Z'),
-          $lt: to.toISOString().replace('.000Z', 'Z')
+        time: {
+          $gte: from,
+          $lt: to
         }
       }
     },
@@ -44,8 +44,8 @@ export const recent = async (since) => (
   await client.db('cichlid').collection('probe').distinct(
     'source.ip',
     {
-      date: {
-        $gte: since.toISOString().replace('.000Z', 'Z')
+      time: {
+        $gte: since
       }
     }
   )
@@ -83,9 +83,9 @@ export const getStats = async (target, listener, from, to, period) => (
   await client.db('cichlid').collection('probe').aggregate([
     {
       $match: {
-        date: {
-          $gte: from.toISOString().replace('.000Z', 'Z'),
-          $lt: to.toISOString().replace('.000Z', 'Z')
+        time: {
+          $gte: from,
+          $lt: to
         },
         'target.fqdn': {
           $regex: target
@@ -126,9 +126,9 @@ export const getTargets = async (target, listener, from, to) => (
   (await client.db('cichlid').collection('probe').distinct(
     'target.fqdn',
     {
-      date: {
-        $gte: from.toISOString().replace('.000Z', 'Z'),
-        $lt: to.toISOString().replace('.000Z', 'Z')
+      time: {
+        $gte: from,
+        $lt: to
       },
       'target.fqdn': {
         $regex: target
@@ -139,12 +139,13 @@ export const getTargets = async (target, listener, from, to) => (
     }
   ))
 );
-export const getProbes = async (target, listener, from, to) => {
-  const raw = await client.db('cichlid').collection('probe').find(
+
+export const getProbes = async (target, listener, from, to) => (
+  await client.db('cichlid').collection('probe').find(
     {
-      date: {
-        $gte: from.toISOString().replace('.000Z', 'Z'),
-        $lt: to.toISOString().replace('.000Z', 'Z')
+      time: {
+        $gte: from,
+        $lt: to
       },
       'target.fqdn': {
         $regex: target
@@ -158,11 +159,22 @@ export const getProbes = async (target, listener, from, to) => {
         _id: false
       }
     }
-  ).toArray();
-  const probes = await Promise.all(
+  ).toArray()
+);
 
-  );
-};
+export const getLatestProbes = async (target, listener, limit) => (
+  await client.db('cichlid').collection('probe').find(
+    {
+      'target.fqdn': {
+        $regex: target
+      },
+      note: {
+        $regex: listener
+      },
+    }
+  ).sort({ time: -1 }).limit(limit).toArray()
+);
+
 const getIpv4AsInteger = (ipv4) => (ipv4.split('.').reverse().reduce((a, o, i) => (a + (parseInt(o) * (256 ** i))), 0));
 
 export const getCoordinates = async (ip) => {
@@ -237,9 +249,13 @@ export const getLocation = async (ip) => {
       }
     )
   ]);
+  console.log({ip, abi, cbi});
+  if (!cbi || !cbi.geoname_id) {
+    return null;
+  }
   const c = await client.db('geoip').collection('city-locations-en').findOne(
     {
-      geoname_id: x.geoname_id,
+      geoname_id: cbi.geoname_id,
     },
     {
       projection: {
@@ -278,11 +294,11 @@ export const getLocation = async (ip) => {
       id: cbi.registered_country_geoname_id,
     },
     city: {
-      code: c.metro_code,
-      name: c.city_name,
+      ...(!!c.metro_code) && { code: c.metro_code },
+      ...(!!c.city_name) && { name: c.city_name },
       id: cbi.geoname_id,
     },
-    postcode: cbi.postal_code,
+    ...(!!cbi.postal_code) && { postcode: cbi.postal_code },
     location: {
       latitude: cbi.latitude,
       longitude: cbi.longitude,
@@ -296,10 +312,12 @@ export const getLocation = async (ip) => {
           code: c.subdivision_1_iso_code,
           name: c.subdivision_1_name,
         }],
+        /*
         ...(!!c.subdivision_2_iso_code || !!c.subdivision_2_name) & [{
           code: c.subdivision_2_iso_code,
           name: c.subdivision_2_name,
         }],
+        */
       ]
     }),
     timezone: c.time_zone,

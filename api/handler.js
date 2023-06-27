@@ -5,10 +5,12 @@ import {
   top,
   getStats,
   getTargets,
+  getLatestProbes,
   getCoordinates,
+  getLocation,
 } from './db.js';
 import { headers } from './util.js';
-//import fetch from 'node-fetch';
+import fetch from 'node-fetch';
 
 const response = {
   headers,
@@ -92,14 +94,32 @@ export const targets = async ({ pathParameters: { target, listener, from, to } }
   };
 };
 
-export const probes = async (event) => {
-  const { since } = event.pathParameters;
-  const sources = await Promise.all((await probes(new Date(since))));
+const locateProbe = async (probe) => {
+  const [target, source] = await Promise.all([
+    getLocation(probe.target.ip),
+    getLocation(probe.source.ip),
+  ]);
+  return {
+    ...probe,
+    target: {
+      ...probe.target,
+      location: target,
+    },
+    source: {
+      ...probe.source,
+      location: source,
+    },
+  };
+};
+
+export const probes = async ({ pathParameters: { target, listener, limit } }) => {
+  const rawProbes = await getLatestProbes(decodeURI(target), decodeURI(listener), parseInt(limit));
+  const probes = await Promise.all(rawProbes.map(locateProbe));
   return {
     ...response,
     body: JSON.stringify(
       {
-        sources
+        probes
       },
       null,
       2
