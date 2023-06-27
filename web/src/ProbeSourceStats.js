@@ -39,9 +39,8 @@ function ProbeSourceStats() {
     fetch(`https://nhxz2l8yqe.execute-api.eu-central-1.amazonaws.com/prod/overview/100/${from.toISOString()}/${to.toISOString()}`)
       .then(response => response.json())
       .then(({ sources }) => {
-        setMaxValue(sources[0].probes);
         setData(sources);
-        setLocations(Object.values(sources.reduce(
+        const located = Object.values(sources.reduce(
           (a, { source: { location: { longitude, latitude }, city: { id } }, probes }) => (
             (!!a[id])
               ? {
@@ -61,7 +60,9 @@ function ProbeSourceStats() {
                 }
           ),
           {}
-        )))
+        ));
+        setMaxValue(Math.round(Math.max(...located.map((l) => l.probes)) * 0.5));
+        setLocations(located);
       });
   });
   const popScale = useMemo(
@@ -83,7 +84,7 @@ function ProbeSourceStats() {
                     <Geographies geography={'https://stats.cichlid.io/continents.json'}>
                       {
                         ({ geographies }) => geographies.map((geometry) => (
-                          <Geography key={geometry.rsmKey} geography={geometry} fill="#dddddd" />
+                          <Geography key={geometry.rsmKey} geography={geometry} fill="#eeeeee" />
                         ))
                       }
                     </Geographies>
