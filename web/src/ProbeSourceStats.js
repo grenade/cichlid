@@ -3,14 +3,15 @@ import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Form from 'react-bootstrap/Form';
 import Table from 'react-bootstrap/Table';
+import Spinner from 'react-bootstrap/Spinner';
 
 import {
   ComposableMap,
   Geographies,
   Geography,
   Marker
-} from "react-simple-maps";
-import { scaleLinear } from "d3-scale";
+} from 'react-simple-maps';
+import { scaleLinear } from 'd3-scale';
 
 const columns = [
   {
@@ -28,7 +29,6 @@ const columns = [
     }
   }
 ];
-const geoUrl = "https://raw.githubusercontent.com/deldersveld/topojson/master/world-continents.json";
 
 function ProbeSourceStats() {
   const [maxValue, setMaxValue] = useState(0);
@@ -148,7 +148,7 @@ function ProbeSourceStats() {
             (!!data && !!locations)
               ? (
                   <ComposableMap projectionConfig={{ rotate: [-10, 0, 0] }}>
-                    <Geographies geography={geoUrl}>
+                    <Geographies geography={'https://stats.cichlid.io/continents.json'}>
                       {
                         ({ geographies }) => geographies.map((geometry) => (
                           <Geography key={geometry.rsmKey} geography={geometry} fill="#dddddd" />
@@ -164,7 +164,11 @@ function ProbeSourceStats() {
                     })}
                   </ComposableMap>
                 )
-              : null
+              : (
+                  <Spinner animation="border" variant="secondary" size="lg">
+                    <span className="visually-hidden">lookup in progress...</span>
+                  </Spinner>
+                )
           }
         </Col>
       </Row>

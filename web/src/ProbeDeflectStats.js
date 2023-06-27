@@ -3,6 +3,7 @@ import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Form from 'react-bootstrap/Form';
 import Table from 'react-bootstrap/Table';
+import Spinner from 'react-bootstrap/Spinner';
 import { Chart } from 'react-chartjs-2';
 import { 
   Chart as ChartJS,
@@ -128,7 +129,11 @@ function ProbeDeflectStats() {
                   data={data}
                 />
               )
-            : null
+            : (
+                <Spinner animation="border" variant="secondary" size="lg">
+                  <span className="visually-hidden">lookup in progress...</span>
+                </Spinner>
+              )
         }
       </Row>
       <Row>
