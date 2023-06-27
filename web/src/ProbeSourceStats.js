@@ -1,83 +1,37 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Form from 'react-bootstrap/Form';
 import Table from 'react-bootstrap/Table';
 
-import {Map} from 'react-map-gl';
-import maplibregl from 'maplibre-gl';
-import DeckGL from '@deck.gl/react';
-import {LineLayer, ScatterplotLayer} from '@deck.gl/layers';
-import GL from '@luma.gl/constants';
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+  Marker
+} from "react-simple-maps";
+import { scaleLinear } from "d3-scale";
 
-function getColor(d) {
-  const z = d.start[2];
-  const r = z / 10000;
-
-  return [255 * (1 - r * 2), 128 * r, 255 * r, 255 * (1 - r)];
-}
-
-function getSize(fqdn) {
-  const domain = fqdn.slice(fqdn.indexOf('.') + 1);
-  //console.log(domain, fqdn);
-  switch (domain) {
-    case 'calamari.systems':
-      return 90;
-    case 'manta.systems':
-      return 60;
-    default:
-      return 30;
+const columns = [
+  {
+    header: 'source',
+    style: {}
+  },
+  {
+    header: 'location',
+    style: {}
+  },
+  {
+    header: 'probes',
+    style: {
+      textAlign: 'right'
+    }
   }
-}
+];
+const geoUrl = "https://raw.githubusercontent.com/deldersveld/topojson/master/world-continents.json";
 
-function getTooltip({object}) {
-  //console.log(object);
-  return (!!object)
-    ? (!!object.fqdn && !!object.ip)
-      ? `${object.fqdn} ${object.ip}`
-      : (!!object.name)
-        ? `${object.name}`
-        : null
-    : null;
-}
-
-function ProbeSourceStats({
-  //targets = `https://nhxz2l8yqe.execute-api.eu-central-1.amazonaws.com/prod/targets/${encodeURI('.*')}/${encodeURI('.*')}/${(new Date('2023-06-22')).toISOString()}/${(new Date('2023-06-23')).toISOString()}`,
-  targets = 'https://gist.githubusercontent.com/grenade/c33c57a551bbf5abb8f5f3af42a0110f/raw/06ebd8f1714b49d60c5a320e4e1816058ffb2db3/nodes.json',
-  probes = 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/line/heathrow-flights.json',
-  mapStyle = 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json',
-  getWidth = 3,
-  initialViewState = {
-    latitude: 47.65,
-    longitude: 7,
-    zoom: 4.5,
-    maxZoom: 16,
-    pitch: 50,
-    bearing: 0
-  }
-}) {
-  const layers = [
-    new ScatterplotLayer({
-      id: 'targets',
-      data: targets,
-      radiusScale: 20,
-      getPosition: (target) => target.coordinates,
-      getFillColor: [255, 140, 0],
-      getRadius: d => getSize(d.fqdn),
-      pickable: true
-    }),
-    new LineLayer({
-      id: 'probes',
-      data: probes,
-      opacity: 0.8,
-      getSourcePosition: d => d.start,
-      getTargetPosition: d => d.end,
-      getColor,
-      getWidth,
-      pickable: true
-    })
-  ];
-
+function ProbeSourceStats() {
+  const [maxValue, setMaxValue] = useState(0);
   const [options, setOptions] = useState({
     period: {
       selected: 1,
@@ -138,72 +92,77 @@ function ProbeSourceStats({
     listener: '.*',
   });
   const [data, setData] = useState(undefined);
+  const [locations, setLocations] = useState(undefined);
   useEffect(() => {
     const [to, from] = [new Date(), new Date()];
     from.setDate(to.getDate() - 1);
-    fetch(`https://nhxz2l8yqe.execute-api.eu-central-1.amazonaws.com/prod/stats/${encodeURI(options.target.available[options.target.selected].value)}/${encodeURI(options.listener)}/${from.toISOString()}/${to.toISOString()}/${options.period.available[options.period.selected].value}`)
+    //fetch(`https://nhxz2l8yqe.execute-api.eu-central-1.amazonaws.com/prod/overview/${encodeURI(options.target.available[options.target.selected].value)}/${encodeURI(options.listener)}/${from.toISOString()}/${to.toISOString()}/${options.period.available[options.period.selected].value}`)
+    fetch(`https://nhxz2l8yqe.execute-api.eu-central-1.amazonaws.com/prod/overview/100/${from.toISOString()}/${to.toISOString()}`)
       .then(response => response.json())
-      .then(container => {
-        const labels = [...new Set(container.stats.map((x) => x[options.period.available[options.period.selected].value]))].sort();
-        const targets = [...new Set(container.stats.map((x) => x.target))].sort();
-        const datasets = targets.map(target => ({
-          label: target,
-          data: labels.map((label) => {
-            const x = container.stats.find((x) => x.target === target && x[options.period.available[options.period.selected].value] === label);
-            return (!!x) ? x.attempts : 0;
-          }),
-        }));
-        setData({ labels, targets, datasets })
+      .then(({ sources }) => {
+        setMaxValue(sources[0].probes);
+        setData(sources);
+        setLocations(Object.values(sources.reduce(
+          (a, { source: { location: { longitude, latitude }, city: { id } }, probes }) => {
+            if (!!a[id]) {
+              return {
+                ...a,
+                [id]: {
+                  ...a[id],
+                  probes: (a[id].probes + probes),
+                }
+              };
+            } else {
+              return {
+                ...a,
+                [id]: {
+                  id,
+                  coordinates: [longitude, latitude],
+                  probes,
+                }
+              };
+              a[id] = {
+                id,
+                coordinates: [longitude, latitude],
+                probes,
+              };
+            }
+          },
+          {}
+        )))
       });
   });
+  const popScale = useMemo(
+    () => scaleLinear().domain([0, maxValue]).range([0, 24]),
+    [maxValue]
+  );
   return (
     <Fragment>
       <Row>
-        <Col>
-          
-          <Form.Select
-            value={options.target.selected}
-            onChange={({ target: { value } }) => {
-              setOptions(x => ({
-                ...x,
-                target: {
-                  ...x.target,
-                  selected: value
-                }
-              }));
-            }}
-          >
-            {
-              options.target.available.map((option, optionIndex) => (
-                <option key={optionIndex} value={optionIndex}>
-                  {option.label}
-                </option>
-              ))
-            }
-          </Form.Select>
-        </Col>
-        <Col>
-          period
-        </Col>
+        <h2>deflected probe origins</h2>
+        <h3>last 24 hours</h3>
       </Row>
       <Row>
-        <Col style={{ minHeight: '600px', width: '50vw', position: 'relative' }}>
+        <Col>
           {
-            (!!data)
+            (!!data && !!locations)
               ? (
-                  <DeckGL
-                    layers={layers}
-                    initialViewState={initialViewState}
-                    controller={true}
-                    pickingRadius={5}
-                    parameters={{
-                      blendFunc: [GL.SRC_ALPHA, GL.ONE, GL.ONE_MINUS_DST_ALPHA, GL.ONE],
-                      blendEquation: GL.FUNC_ADD
-                    }}
-                    getTooltip={getTooltip}
-                  >
-                    <Map reuseMaps mapLib={maplibregl} mapStyle={mapStyle} preventStyleDiffing={true} />
-                  </DeckGL>
+                  <ComposableMap projectionConfig={{ rotate: [-10, 0, 0] }}>
+                    <Geographies geography={geoUrl}>
+                      {
+                        ({ geographies }) => geographies.map((geometry) => (
+                          <Geography key={geometry.rsmKey} geography={geometry} fill="#dddddd" />
+                        ))
+                      }
+                    </Geographies>
+                    {locations.map(({ id, coordinates, probes }) => {
+                      return (
+                        <Marker key={id} coordinates={coordinates}>
+                          <circle fill="rgba(255, 85, 51, 0.5)" stroke="#ffffff" r={popScale(probes)} />
+                        </Marker>
+                      );
+                    })}
+                  </ComposableMap>
                 )
               : null
           }
@@ -216,11 +175,10 @@ function ProbeSourceStats({
                 <Table striped bordered hover>
                   <thead>
                     <tr>
-                      <th></th>
                       {
-                        data.datasets.map((dataset, datasetIndex) => (
-                          <th key={datasetIndex} style={{textAlign: 'right'}}>
-                            {dataset.label.split('.')[0]}
+                        columns.map((column, columnIndex) => (
+                          <th key={columnIndex} style={column.style}>
+                            {column.header}
                           </th>
                         ))
                       }
@@ -228,18 +186,38 @@ function ProbeSourceStats({
                   </thead>
                   <tbody>
                     {
-                      data.labels.map((label, labelIndex) => (
-                        <tr key={labelIndex}>
-                          <th>
-                            {label}
-                          </th>
-                          {
-                            data.targets.map((target, targetIndex) => (
-                              <td key={targetIndex} style={{textAlign: 'right'}}>
-                                {data.datasets[targetIndex].data[labelIndex]}
-                              </td>
-                            ))
-                          }
+                      data.filter((source) => (source.probes > 999)).map((row, rowIndex) => (
+                        <tr key={rowIndex}>
+                          <td>
+                            {row.source.ip}
+                            {
+                              (!!row.source.provider && !!row.source.provider.name)
+                                ? (
+                                    <em className={'text-muted'} style={{marginLeft: '1em'}}>
+                                      {row.source.provider.name}
+                                    </em>
+                                  )
+                                : null
+                            }
+                          </td>
+                          <td>
+                            {row.source.location.longitude}, {row.source.location.latitude}
+                            <em className={'text-muted'} style={{marginLeft: '1em'}}>
+                              {
+                                (!!row.source.city && !!row.source.city.name)
+                                  ? `${row.source.city.name}, `
+                                  : null
+                              }
+                              {
+                                (!!row.source.country)
+                                  ? row.source.country.name
+                                  : null
+                              }
+                            </em>
+                          </td>
+                          <td style={columns.find((c) => (c.header === 'probes')).style}>
+                            {row.probes}
+                          </td>
                         </tr>
                       ))
                     }

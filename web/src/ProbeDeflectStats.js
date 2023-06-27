@@ -83,7 +83,7 @@ function ProbeDeflectStats() {
           label: target,
           data: labels.map((label) => {
             const x = container.stats.find((x) => x.target === target && x[options.period.available[options.period.selected].value] === label);
-            return (!!x) ? x.attempts : 0;
+            return (!!x) ? x.probes : 0;
           }),
         }));
         setData({ labels, targets, datasets })

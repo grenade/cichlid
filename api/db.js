@@ -17,14 +17,14 @@ export const top = async (from, to, limit) => (
     {
       $group: {
         _id: '$source.ip',
-        attempts: {
+        probes: {
           $sum: 1
         }
       }
     },
     {
       $sort: {
-        attempts: -1
+        probes: -1
       }
     },
     {
@@ -34,7 +34,7 @@ export const top = async (from, to, limit) => (
       $project: {
         _id: false,
         ip: '$_id',
-        attempts: true
+        probes: true
       }
     }
   ]).toArray()
@@ -101,7 +101,7 @@ export const getStats = async (target, listener, from, to, period) => (
           period: getPeriodSelector(period),
           target: '$target.fqdn',
         },
-        attempts: {
+        probes: {
           $sum: 1
         }
       }
@@ -117,7 +117,7 @@ export const getStats = async (target, listener, from, to, period) => (
         _id: false,
         [period]: '$_id.period',
         target: '$_id.target',
-        attempts: true
+        probes: true
       }
     }
   ]).toArray()
@@ -279,10 +279,12 @@ export const getLocation = async (ip) => {
     id: ipAsInteger,
     ip,
     network: cbi.network,
-    provider: {
-      id: abi.autonomous_system_number,
-      name: abi.autonomous_system_organization,
-      network: abi.network,
+    ...(!!abi) && {
+      provider: {
+        id: abi.autonomous_system_number,
+        name: abi.autonomous_system_organization,
+        network: abi.network,
+      }
     },
     continent: {
       code: c.continent_code,

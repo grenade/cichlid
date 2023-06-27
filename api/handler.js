@@ -31,12 +31,11 @@ const getIp = async (fqdn) => (
 
 export const overview = async (event) => {
   const { limit, from, to } = event.pathParameters;
-  const sources = await Promise.all((await top(new Date(from), new Date(to), parseInt(limit))).map(async ({ip, attempts}) => {
-    const response = await fetch(`https://ipapi.co/${ip}/json`);
-    const source = await response.json();
+  const sources = await Promise.all((await top(new Date(from), new Date(to), parseInt(limit))).map(async ({ip, probes}) => {
+    const source = await getLocation(ip);
     return {
       source,
-      attempts,
+      probes,
     };
   }));
   return {
