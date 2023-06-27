@@ -249,7 +249,7 @@ export const getLocation = async (ip) => {
       }
     )
   ]);
-  console.log({ip, abi, cbi});
+  //console.log({ip, abi, cbi});
   if (!cbi || !cbi.geoname_id) {
     return null;
   }
