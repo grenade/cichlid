@@ -1,215 +1,109 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
-import Form from 'react-bootstrap/Form';
 import Table from 'react-bootstrap/Table';
+import Spinner from 'react-bootstrap/Spinner';
 
-import {Map} from 'react-map-gl';
-import maplibregl from 'maplibre-gl';
-import DeckGL from '@deck.gl/react';
-import {LineLayer, ScatterplotLayer} from '@deck.gl/layers';
-import GL from '@luma.gl/constants';
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+  Marker
+} from 'react-simple-maps';
+import { scaleLinear } from 'd3-scale';
 
-// Source data CSV
-const DATA_URL = {
-  AIRPORTS:
-    'https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/line/airports.json', // eslint-disable-line
-  FLIGHT_PATHS:
-    'https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/line/heathrow-flights.json' // eslint-disable-line
-};
-
-const INITIAL_VIEW_STATE = {
-  latitude: 47.65,
-  longitude: 7,
-  zoom: 4.5,
-  maxZoom: 16,
-  pitch: 50,
-  bearing: 0
-};
-
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json';
-
-function getColor(d) {
-  const z = d.start[2];
-  const r = z / 10000;
-
-  return [255 * (1 - r * 2), 128 * r, 255 * r, 255 * (1 - r)];
-}
-
-function getSize(type) {
-  if (type.search('major') >= 0) {
-    return 100;
+const columns = [
+  {
+    header: 'source',
+    style: {}
+  },
+  {
+    header: 'location',
+    style: {}
+  },
+  {
+    header: 'probes',
+    style: {
+      textAlign: 'right'
+    }
   }
-  if (type.search('small') >= 0) {
-    return 30;
-  }
-  return 60;
-}
+];
 
-function getTooltip({object}) {
-  return (
-    object &&
-    `\
-  ${object.country || object.abbrev || ''}
-  ${object.name.indexOf('0x') >= 0 ? '' : object.name}`
-  );
-}
-
-function ProbeSourceStats({
-  airports = DATA_URL.AIRPORTS,
-  flightPaths = DATA_URL.FLIGHT_PATHS,
-  getWidth = 3,
-  mapStyle = MAP_STYLE
-}) {
-  const layers = [
-    new ScatterplotLayer({
-      id: 'airports',
-      data: airports,
-      radiusScale: 20,
-      getPosition: d => d.coordinates,
-      getFillColor: [255, 140, 0],
-      getRadius: d => getSize(d.type),
-      pickable: true
-    }),
-    new LineLayer({
-      id: 'flight-paths',
-      data: flightPaths,
-      opacity: 0.8,
-      getSourcePosition: d => d.start,
-      getTargetPosition: d => d.end,
-      getColor,
-      getWidth,
-      pickable: true
-    })
-  ];
-
-  const [options, setOptions] = useState({
-    period: {
-      selected: 1,
-      available: [
-        {
-          label: 'minute',
-          value: 'minute',
-        },
-        {
-          label: 'hour',
-          value: 'hour',
-        },
-        {
-          label: 'day',
-          value: 'day',
-        },
-        {
-          label: 'month',
-          value: 'month',
-        },
-        {
-          label: 'year',
-          value: 'year',
-        },
-      ]
-    },
-    target: {
-      selected: 0,
-      available: [
-        {
-          label: 'calamari archive',
-          // eslint-disable-next-line
-          value: '^(a[0-9]|avocado|bokkeum|fritti|pasta|salad|smoothie)\.calamari\.systems$',
-        },
-        {
-          label: 'calamari collator',
-          // eslint-disable-next-line
-          value: '^c[0-9]\.calamari\.systems$',
-        },
-        {
-          label: 'calamari full',
-          // eslint-disable-next-line
-          value: '^f[0-9]\.calamari\.systems$',
-        },
-        {
-          label: 'manta archive',
-          // eslint-disable-next-line
-          value: '^a[0-9]\.manta\.systems$',
-        },
-        {
-          label: 'manta collator',
-          // eslint-disable-next-line
-          value: '^c[0-9]\.manta\.systems$',
-        },
-      ]
-    },
-    //listener: '^(ssh|ssl|www)$',
-    listener: '.*',
-  });
+function ProbeSourceStats() {
+  const [maxValue, setMaxValue] = useState(0);
   const [data, setData] = useState(undefined);
+  const [locations, setLocations] = useState(undefined);
   useEffect(() => {
     const [to, from] = [new Date(), new Date()];
     from.setDate(to.getDate() - 1);
-    fetch(`https://nhxz2l8yqe.execute-api.eu-central-1.amazonaws.com/prod/stats/${encodeURI(options.target.available[options.target.selected].value)}/${encodeURI(options.listener)}/${from.toISOString()}/${to.toISOString()}/${options.period.available[options.period.selected].value}`)
+    fetch(`https://nhxz2l8yqe.execute-api.eu-central-1.amazonaws.com/prod/overview/100/${from.toISOString()}/${to.toISOString()}`)
       .then(response => response.json())
-      .then(container => {
-        const labels = [...new Set(container.stats.map((x) => x[options.period.available[options.period.selected].value]))].sort();
-        const targets = [...new Set(container.stats.map((x) => x.target))].sort();
-        const datasets = targets.map(target => ({
-          label: target,
-          data: labels.map((label) => {
-            const x = container.stats.find((x) => x.target === target && x[options.period.available[options.period.selected].value] === label);
-            return (!!x) ? x.attempts : 0;
-          }),
-        }));
-        setData({ labels, targets, datasets })
+      .then(({ sources }) => {
+        setData(sources);
+        const located = Object.values(sources.reduce(
+          (a, { source: { location: { longitude, latitude }, city: { id } }, probes }) => (
+            (!!a[id])
+              ? {
+                  ...a,
+                  [id]: {
+                    ...a[id],
+                    probes: (a[id].probes + probes),
+                  }
+                }
+              : {
+                  ...a,
+                  [id]: {
+                    id,
+                    coordinates: [longitude, latitude],
+                    probes,
+                  }
+                }
+          ),
+          {}
+        ));
+        setMaxValue(Math.max(...located.map((l) => l.probes)));
+        setLocations(located);
       });
   });
+  const popScale = useMemo(
+    () => scaleLinear().domain([0, maxValue]).range([0, 24]),
+    [maxValue]
+  );
   return (
     <Fragment>
       <Row>
-        <Col>
-          
-          <Form.Select
-            onChange={({ target: { value } }) => {
-              setOptions(x => ({
-                ...x,
-                target: {
-                  ...x.target,
-                  selected: value
-                }
-              }));
-            }}
-          >
-            {
-              options.target.available.map((option, optionIndex) => (
-                <option key={optionIndex} value={optionIndex} selected={options.target.selected === optionIndex}>
-                  {option.label}
-                </option>
-              ))
-            }
-          </Form.Select>
-        </Col>
-        <Col>
-          period
-        </Col>
+        <h2>deflected probe origins</h2>
+        <h3>last 24 hours</h3>
       </Row>
       <Row>
-        {
-          (!!data)
-            ? (
-                <DeckGL
-                  layers={layers}
-                  initialViewState={INITIAL_VIEW_STATE}
-                  controller={true}
-                  pickingRadius={5}
-                  parameters={{
-                    blendFunc: [GL.SRC_ALPHA, GL.ONE, GL.ONE_MINUS_DST_ALPHA, GL.ONE],
-                    blendEquation: GL.FUNC_ADD
-                  }}
-                  getTooltip={getTooltip}
-                >
-                  <Map reuseMaps mapLib={maplibregl} mapStyle={mapStyle} preventStyleDiffing={true} />
-                </DeckGL>
-              )
-            : null
-        }
+        <Col>
+          {
+            (!!data && !!locations)
+              ? (
+                  <ComposableMap projectionConfig={{ rotate: [-10, 0, 0] }}>
+                    <Geographies geography={'https://stats.cichlid.io/continents.json'}>
+                      {
+                        ({ geographies }) => geographies.map((geometry) => (
+                          <Geography key={geometry.rsmKey} geography={geometry} fill="#eeeeee" />
+                        ))
+                      }
+                    </Geographies>
+                    {locations.map(({ id, coordinates, probes }) => {
+                      return (
+                        <Marker key={id} coordinates={coordinates}>
+                          <circle fill="rgba(255, 85, 51, 0.5)" stroke="#ffffff" r={popScale(probes)} />
+                        </Marker>
+                      );
+                    })}
+                  </ComposableMap>
+                )
+              : (
+                  <Spinner animation="border" variant="secondary" size="lg">
+                    <span className="visually-hidden">lookup in progress...</span>
+                  </Spinner>
+                )
+          }
+        </Col>
       </Row>
       <Row>
         {
@@ -218,11 +112,19 @@ function ProbeSourceStats({
                 <Table striped bordered hover>
                   <thead>
                     <tr>
-                      <th></th>
                       {
-                        data.datasets.map((dataset, datasetIndex) => (
-                          <th key={datasetIndex} style={{textAlign: 'right'}}>
-                            {dataset.label.split('.')[0]}
+                        columns.map((column, columnIndex) => (
+                          <th key={columnIndex} style={column.style}>
+                            {column.header}
+                            {
+                              (column.header === 'source')
+                               ? (
+                                   <em className={'text-muted'} style={{marginLeft: '0.5em'}}>
+                                     provider subnet
+                                   </em>
+                                 )
+                               : null
+                            }
                           </th>
                         ))
                       }
@@ -230,18 +132,54 @@ function ProbeSourceStats({
                   </thead>
                   <tbody>
                     {
-                      data.labels.map((label, labelIndex) => (
-                        <tr key={labelIndex}>
-                          <th>
-                            {label}
-                          </th>
-                          {
-                            data.targets.map((target, targetIndex) => (
-                              <td key={targetIndex} style={{textAlign: 'right'}}>
-                                {data.datasets[targetIndex].data[labelIndex]}
-                              </td>
-                            ))
-                          }
+                      data.filter((source) => (source.probes > 999)).map((row, rowIndex) => (
+                        <tr key={rowIndex}>
+                          <td>
+                            {
+                              (!!row.source)
+                                ? (
+                                    <Fragment>
+                                      {row.source.ip}
+                                      {
+                                        (!!row.source.provider && !!row.source.provider.name)
+                                          ? (
+                                              <em className={'text-muted'} style={{marginLeft: '0.5em'}}>
+                                                {row.source.provider.name} {row.source.provider.network}
+                                              </em>
+                                            )
+                                          : null
+                                      }
+                                    </Fragment>
+                                  )
+                                : null
+                            }
+                          </td>
+                          <td>
+                            {
+                              (!!row.source)
+                                ? (
+                                    <Fragment>
+                                      {row.source.location.longitude}, {row.source.location.latitude}
+                                      <em className={'text-muted'} style={{marginLeft: '0.5em'}}>
+                                        {
+                                          (!!row.source.city && !!row.source.city.name)
+                                            ? `${row.source.city.name}, `
+                                            : null
+                                        }
+                                        {
+                                          (!!row.source.country)
+                                            ? row.source.country.name
+                                            : null
+                                        }
+                                      </em>
+                                    </Fragment>
+                                  )
+                                : null
+                            }
+                          </td>
+                          <td style={columns.find((c) => (c.header === 'probes')).style}>
+                            {row.probes}
+                          </td>
                         </tr>
                       ))
                     }

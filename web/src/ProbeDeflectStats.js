@@ -3,6 +3,7 @@ import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Form from 'react-bootstrap/Form';
 import Table from 'react-bootstrap/Table';
+import Spinner from 'react-bootstrap/Spinner';
 import { Chart } from 'react-chartjs-2';
 import { 
   Chart as ChartJS,
@@ -83,7 +84,7 @@ function ProbeDeflectStats() {
           label: target,
           data: labels.map((label) => {
             const x = container.stats.find((x) => x.target === target && x[options.period.available[options.period.selected].value] === label);
-            return (!!x) ? x.attempts : 0;
+            return (!!x) ? x.probes : 0;
           }),
         }));
         setData({ labels, targets, datasets })
@@ -95,7 +96,7 @@ function ProbeDeflectStats() {
         <Col>
           
           <Form.Select
-            defaultValue={options.target.selected}
+            value={options.target.selected}
             onChange={({ target: { value } }) => {
               setOptions(x => ({
                 ...x,
@@ -108,7 +109,7 @@ function ProbeDeflectStats() {
           >
             {
               options.target.available.map((option, optionIndex) => (
-                <option key={optionIndex} value={optionIndex} selected={options.target.selected === optionIndex}>
+                <option key={optionIndex} value={optionIndex}>
                   {option.label}
                 </option>
               ))
@@ -128,7 +129,11 @@ function ProbeDeflectStats() {
                   data={data}
                 />
               )
-            : null
+            : (
+                <Spinner animation="border" variant="secondary" size="lg">
+                  <span className="visually-hidden">lookup in progress...</span>
+                </Spinner>
+              )
         }
       </Row>
       <Row>

@@ -92,3 +92,23 @@ functions:
             parameters:
                paths:
                  target: true
+                 listener: true
+                 from: true
+                 to: true
+  probes:
+    handler: handler.probes
+    timeout: 30
+    environment:
+      db_readwrite: ${ssm:/cichlid_db_read}
+    events:
+      -
+        http:
+          path: probes/{target}/{listener}/{limit}
+          method: get
+          cors: true
+          request:
+            parameters:
+               paths:
+                 target: true
+                 listener: true
+                 limit: true
