@@ -8,7 +8,7 @@ import {
   ComposableMap,
   Geographies,
   Geography,
-  Marker
+  Marker,
 } from 'react-simple-maps';
 import { scaleLinear } from 'd3-scale';
 
@@ -30,7 +30,7 @@ const columns = [
 ];
 
 function ProbeSourceStats() {
-  const [maxValue, setMaxValue] = useState(0);
+  const [scale, setScale] = useState({ min: 0, max: 0 });
   const [data, setData] = useState(undefined);
   const [locations, setLocations] = useState(undefined);
   useEffect(() => {
@@ -61,13 +61,16 @@ function ProbeSourceStats() {
           ),
           {}
         ));
-        setMaxValue(Math.max(...located.map((l) => l.probes)));
+        setScale({
+          min: Math.min(...located.map((l) => l.probes)),
+          max: Math.max(...located.map((l) => l.probes)),
+        });
         setLocations(located);
       });
   });
   const popScale = useMemo(
-    () => scaleLinear().domain([0, maxValue]).range([0, 24]),
-    [maxValue]
+    () => scaleLinear().domain([scale.min, scale.max]).range([4, 24]),
+    [scale.min, scale.max]
   );
   return (
     <Fragment>
@@ -81,10 +84,26 @@ function ProbeSourceStats() {
             (!!data && !!locations)
               ? (
                   <ComposableMap projectionConfig={{ rotate: [-10, 0, 0] }}>
-                    <Geographies geography={'https://stats.cichlid.io/continents.json'}>
+                    <Geographies geography={'https://stats.cichlid.io/geography/countries.json'}>
                       {
-                        ({ geographies }) => geographies.map((geometry) => (
-                          <Geography key={geometry.rsmKey} geography={geometry} fill="#eeeeee" />
+                        ({ geographies }) => geographies.map((geography) => (
+                          <Geography key={geography.rsmKey} geography={geography} style={{
+                            default: {
+                              fill: '#eeeeee',
+                              stroke: '#ffffff',
+                              strokeWidth: 1,
+                            },
+                            hover: {
+                              fill: '#dddddd',
+                              stroke: '#ffffff',
+                              strokeWidth: 2,
+                            },
+                            pressed: {
+                              fill: "#cccccc",
+                              stroke: '#000000',
+                              strokeWidth: 2,
+                            },
+                          }} />
                         ))
                       }
                     </Geographies>
