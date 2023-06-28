@@ -61,7 +61,7 @@ function ProbeSourceStats() {
           ),
           {}
         ));
-        setMaxValue(Math.round(Math.max(...located.map((l) => l.probes)) * 0.5));
+        setMaxValue(Math.max(...located.map((l) => l.probes)));
         setLocations(located);
       });
   });
