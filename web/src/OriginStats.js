@@ -70,117 +70,118 @@ function OriginStats() {
   return (
     <Fragment>
       <Row>
-      <h1>
-        {ip}
+        <h2>
+          {ip}
+          {
+            (!!data && !!data.sources && !!data.sources.length)
+              ? (
+                  <em className="text-muted" style={{marginLeft: '0.5em'}}>
+                    {
+                      (!!data.sources[0].city && !!data.sources[0].city.name)
+                        ? `${data.sources[0].city.name}, `
+                        : null
+                    }
+                    {
+                      (!!data.sources[0].country)
+                        ? data.sources[0].country.name
+                        : null
+                    }
+                    {
+                      (!!data.sources[0].provider && !!data.sources[0].provider.name)
+                        ? (
+                            <span style={{marginLeft: '0.5em'}}>
+                              - {data.sources[0].provider.name} {data.sources[0].provider.network}
+                            </span>
+                          )
+                        : null
+                    }
+                  </em>
+                )
+              : null
+          }
+        </h2>
+        <h3>last 24 hours</h3>
+      </Row>
+      <Row>
         {
           (!!data && !!data.sources && !!data.sources.length)
             ? (
-                <em className="text-muted" style={{marginLeft: '0.5em'}}>
+                <ComposableMap projectionConfig={{ rotate: [-10, 0, 0] }}>
+                  <Geographies geography={'https://stats.cichlid.io/geography/countries.json'}>
+                    {
+                      ({ geographies }) => geographies.map((geography) => (
+                        <Geography key={geography.rsmKey} geography={geography} style={{
+                          default: {
+                            fill: '#eeeeee',
+                            stroke: '#ffffff',
+                            strokeWidth: 1,
+                          },
+                          hover: {
+                            fill: '#dddddd',
+                            stroke: '#ffffff',
+                            strokeWidth: 2,
+                          },
+                          pressed: {
+                            fill: "#cccccc",
+                            stroke: '#000000',
+                            strokeWidth: 2,
+                          },
+                        }} />
+                      ))
+                    }
+                  </Geographies>
                   {
-                    (!!data.sources[0].city && !!data.sources[0].city.name)
-                      ? `${data.sources[0].city.name}, `
-                      : null
+                    data.sources.map(({ ip, coordinates }) => {
+                      return (
+                        <Marker key={ip} coordinates={coordinates}>
+                          <circle fill="rgba(255, 85, 51, 0.5)" stroke="#ffffff" r={4} />
+                        </Marker>
+                      );
+                    })
                   }
                   {
-                    (!!data.sources[0].country)
-                      ? data.sources[0].country.name
-                      : null
+                    data.targets.map(({ ip, coordinates }) => {
+                      return (
+                        <Marker key={ip} coordinates={coordinates}>
+                          <circle fill="rgba(0, 255, 0, 0.5)" stroke="#ffffff" r={4} />
+                        </Marker>
+                      );
+                    })
                   }
                   {
-                    (!!data.sources[0].provider && !!data.sources[0].provider.name)
-                      ? (
-                          <span style={{marginLeft: '0.5em'}}>
-                            - {data.sources[0].provider.name} {data.sources[0].provider.network}
-                          </span>
-                        )
-                      : null
+                    /*
+                    data.targets.map(({ fqdn, coordinates }) => {
+                      return (
+                        <Marker key={fqdn} coordinates={coordinates}>
+                          <circle fill="rgba(0, 255, 0, 0.5)" stroke="#ffffff" r={4} />
+                        </Marker>
+                      );
+                    })
+                    */
                   }
-                </em>
-              )
-            : null
-        }
-      </h1>
-      </Row>
-      <Row>
-      {
-        (!!data && !!data.sources && !!data.sources.length)
-          ? (
-              <ComposableMap projectionConfig={{ rotate: [-10, 0, 0] }}>
-                <Geographies geography={'https://stats.cichlid.io/geography/countries.json'}>
                   {
-                    ({ geographies }) => geographies.map((geography) => (
-                      <Geography key={geography.rsmKey} geography={geography} style={{
-                        default: {
-                          fill: '#eeeeee',
-                          stroke: '#ffffff',
-                          strokeWidth: 1,
-                        },
-                        hover: {
-                          fill: '#dddddd',
-                          stroke: '#ffffff',
-                          strokeWidth: 2,
-                        },
-                        pressed: {
-                          fill: "#cccccc",
-                          stroke: '#000000',
-                          strokeWidth: 2,
-                        },
-                      }} />
-                    ))
+                    data.trajectories.map(({ to, from, probes }, index) => {
+                      return (
+                        <Line
+                          key={index}
+                          from={from}
+                          to={to}
+                          stroke="rgba(255, 85, 51, 0.1)"
+                          strokeWidth={1}
+                          strokeLinecap="round"
+                        />
+                      );
+                    })
                   }
-                </Geographies>
-                {
-                  data.sources.map(({ ip, coordinates }) => {
-                    return (
-                      <Marker key={ip} coordinates={coordinates}>
-                        <circle fill="rgba(255, 85, 51, 0.5)" stroke="#ffffff" r={4} />
-                      </Marker>
-                    );
-                  })
-                }
-                {
-                  data.targets.map(({ ip, coordinates }) => {
-                    return (
-                      <Marker key={ip} coordinates={coordinates}>
-                        <circle fill="rgba(0, 255, 0, 0.5)" stroke="#ffffff" r={4} />
-                      </Marker>
-                    );
-                  })
-                }
-                {
-                  /*
-                  data.targets.map(({ fqdn, coordinates }) => {
-                    return (
-                      <Marker key={fqdn} coordinates={coordinates}>
-                        <circle fill="rgba(0, 255, 0, 0.5)" stroke="#ffffff" r={4} />
-                      </Marker>
-                    );
-                  })
-                  */
-                }
-                {
-                  data.trajectories.map(({ to, from, probes }, index) => {
-                    return (
-                      <Line
-                        key={index}
-                        from={from}
-                        to={to}
-                        stroke="rgba(255, 85, 51, 0.1)"
-                        strokeWidth={1}
-                        strokeLinecap="round"
-                      />
-                    );
-                  })
-                }
 
-              </ComposableMap>
-            )
-          : (
-              <Spinner animation="border" variant="secondary" size="lg">
-                <span className="visually-hidden">lookup in progress...</span>
-              </Spinner>
-            )
-      }
+                </ComposableMap>
+              )
+            : (
+                <Spinner animation="border" variant="secondary" size="lg">
+                  <span className="visually-hidden">lookup in progress...</span>
+                </Spinner>
+              )
+        }
       </Row>
       <Row>
         <Table>
