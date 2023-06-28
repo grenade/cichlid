@@ -22,7 +22,7 @@ function OriginStats() {
   const [data, setData] = useState(undefined);
   useEffect(() => {
     const [to, from] = [new Date(), new Date()];
-    from.setTime(to.getTime() - (3 * 60 * 60 * 1000));
+    from.setTime(to.getTime() - (24 * 60 * 60 * 1000));
     fetch(`${endpoint}/prod/targets/${encodeURIComponent(ip.replaceAll('.', '\\.'))}/.*/.*/${from.toISOString()}/${to.toISOString()}`)
       .then(response => response.json())
       .then((list) => {
