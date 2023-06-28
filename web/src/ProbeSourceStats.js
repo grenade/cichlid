@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Table from 'react-bootstrap/Table';
@@ -158,7 +159,8 @@ function ProbeSourceStats() {
                               (!!row.source)
                                 ? (
                                     <Fragment>
-                                      {row.source.ip}
+                                      <Link to={`/origin/${row.source.ip}`}>{row.source.ip}</Link>
+                                      
                                       {
                                         (!!row.source.provider && !!row.source.provider.name)
                                           ? (

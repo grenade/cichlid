@@ -9,11 +9,16 @@ import Navbar from 'react-bootstrap/Navbar';
 //import NavDropdown from 'react-bootstrap/NavDropdown';
 import ProbeDeflectStats from './ProbeDeflectStats';
 import ProbeSourceStats from './ProbeSourceStats';
+import OriginStats from './OriginStats';
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <ProbeSourceStats />,
+  },
+  {
+    path: "/origin/:ip",
+    element: <OriginStats />,
   },
   {
     path: "/deflections",
@@ -26,8 +31,8 @@ function App() {
     <Container>
       <Navbar expand="lg" className="bg-body-tertiary">
         <Container>
-          <Navbar.Brand href="#home">
-            <Image src="cichlid-30.png" style={{marginRight: '0.5em'}} />
+          <Navbar.Brand href="/">
+            <Image src="/cichlid-30.png" style={{marginRight: '0.5em'}} />
             cichlid stats
           </Navbar.Brand>
           {

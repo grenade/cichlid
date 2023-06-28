@@ -85,12 +85,13 @@ functions:
     events:
       -
         http:
-          path: targets/{target}/{listener}/{from}/{to}
+          path: targets/{source}/{target}/{listener}/{from}/{to}
           method: get
           cors: true
           request:
             parameters:
                paths:
+                 source: true
                  target: true
                  listener: true
                  from: true
@@ -112,3 +113,22 @@ functions:
                  target: true
                  listener: true
                  limit: true
+  origin:
+    handler: handler.origin
+    timeout: 30
+    environment:
+      db_readwrite: ${ssm:/cichlid_db_read}
+    events:
+      -
+        http:
+          path: origin/{ip}/{target}/{listener}/{from}/{to}
+          method: get
+          cors: true
+          request:
+            parameters:
+               paths:
+                 ip: true
+                 target: true
+                 listener: true
+                 from: true
+                 to: true

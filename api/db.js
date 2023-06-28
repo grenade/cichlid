@@ -122,30 +122,116 @@ export const getStats = async (target, listener, from, to, period) => (
     }
   ]).toArray()
 );
-export const getTargets = async (target, listener, from, to) => (
-  (await client.db('cichlid').collection('probe').distinct(
-    'target.fqdn',
+
+export const getTargets = async (source, target, listener, from, to) => (
+  await client.db('cichlid').collection('probe').aggregate([
     {
-      time: {
-        $gte: from,
-        $lt: to
-      },
-      'target.fqdn': {
-        $regex: target
-      },
-      note: {
-        $regex: listener
-      },
+      $match: {
+        time: {
+          $gte: from,
+          $lt: to
+        },
+        'source.ip': {
+          $regex: source
+        },
+        'target.fqdn': {
+          $regex: target
+        },
+        note: {
+          $regex: listener
+        }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          note: '$note',
+          target: '$target.fqdn',
+          port: '$target.port',
+          source: '$source.ip',
+        },
+        probes: {
+          $sum: 1
+        }
+      }
+    },
+    {
+      $sort: {
+        '_id.note': 1,
+        '_id.target': 1,
+        '_id.port': 1,
+        '_id.source': 1,
+      }
+    },
+    {
+      $project: {
+        _id: false,
+        note: '$_id.note',
+        target: '$_id.target',
+        port: '$_id.port',
+        source: '$_id.source',
+        probes: true
+      }
     }
-  ))
+  ]).toArray()
 );
 
-export const getProbes = async (target, listener, from, to) => (
+export const getOrigin = async (ip, target, listener, from, to) => (
+  await client.db('cichlid').collection('probe').aggregate([
+    {
+      $match: {
+        time: {
+          $gte: from,
+          $lt: to
+        },
+        'source.ip': {
+          $regex: ip
+        },
+        'target.fqdn': {
+          $regex: target
+        },
+        note: {
+          $regex: listener
+        }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          note: '$note',
+          target: '$target.fqdn',
+        },
+        probes: {
+          $sum: 1
+        }
+      }
+    },
+    {
+      $sort: {
+        '_id.note': 1,
+        '_id.target': 1,
+      }
+    },
+    {
+      $project: {
+        _id: false,
+        note: '$_id.note',
+        target: '$_id.target',
+        probes: true
+      }
+    }
+  ]).toArray()
+);
+
+export const getProbes = async (origin, target, listener, from, to) => (
   await client.db('cichlid').collection('probe').find(
     {
       time: {
         $gte: from,
         $lt: to
+      },
+      'source.ip': {
+        $regex: origin
       },
       'target.fqdn': {
         $regex: target
@@ -178,14 +264,14 @@ export const getLatestProbes = async (target, listener, limit) => (
 const getIpv4AsInteger = (ipv4) => (ipv4.split('.').reverse().reduce((a, o, i) => (a + (parseInt(o) * (256 ** i))), 0));
 
 export const getCoordinates = async (ip) => {
-  const ipAsInteger = getIpv4AsInteger(ip);
-  return (await client.db('geoip').collection('city-blocks-ipv4').findOne(
+  const integer = getIpv4AsInteger(ip);
+  const x = (await client.db('geoip').collection('city-blocks-ipv4').findOne(
     {
       network_start_integer: {
-        $lte: ipAsInteger,
+        $lte: integer,
       },
       network_last_integer: {
-        $gte: ipAsInteger,
+        $gte: integer,
       },
     },
     {
@@ -200,7 +286,14 @@ export const getCoordinates = async (ip) => {
         */
       },
     }
-  ))
+  ));
+  return {
+    ...x,
+    ip: {
+      address: ip,
+      integer,
+    },
+  };
 };
 
 export const getLocation = async (ip) => {
@@ -251,7 +344,16 @@ export const getLocation = async (ip) => {
   ]);
   //console.log({ip, abi, cbi});
   if (!cbi || !cbi.geoname_id) {
-    return null;
+    return {
+      ip,
+      ...(!!abi) && {
+        provider: {
+          id: abi.autonomous_system_number,
+          name: abi.autonomous_system_organization,
+          network: abi.network,
+        },
+      },
+    };
   }
   const c = await client.db('geoip').collection('city-locations-en').findOne(
     {
