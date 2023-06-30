@@ -12,7 +12,7 @@ import {
   getProbes,
 } from './db.js';
 import { headers } from './util.js';
-import fetch from 'node-fetch';
+//import fetch from 'node-fetch';
 
 const response = {
   headers,

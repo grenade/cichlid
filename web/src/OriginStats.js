@@ -177,9 +177,10 @@ function OriginStats() {
                 </ComposableMap>
               )
             : (
-                <Spinner animation="border" variant="secondary" size="lg">
-                  <span className="visually-hidden">lookup in progress...</span>
-                </Spinner>
+                <Fragment>
+                  <Spinner animation="border" variant="secondary" size="lg" />
+                  <span style={{marginLeft: '0.5em'}}>query in progress...</span>
+                </Fragment>
               )
         }
       </Row>

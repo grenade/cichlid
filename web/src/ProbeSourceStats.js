@@ -4,8 +4,10 @@ import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Table from 'react-bootstrap/Table';
 import Spinner from 'react-bootstrap/Spinner';
+import Fade from 'react-bootstrap/Fade'
 
 import {
+  Annotation,
   ComposableMap,
   Geographies,
   Geography,
@@ -35,28 +37,32 @@ function ProbeSourceStats() {
   const [data, setData] = useState(undefined);
   const [locations, setLocations] = useState(undefined);
   useEffect(() => {
+  }, [locations]);
+  useEffect(() => {
     const [to, from] = [new Date(), new Date()];
     from.setDate(to.getDate() - 1);
     fetch(`https://nhxz2l8yqe.execute-api.eu-central-1.amazonaws.com/prod/overview/100/${from.toISOString()}/${to.toISOString()}`)
       .then(response => response.json())
       .then(({ sources }) => {
         setData(sources);
-        const located = Object.values(sources.reduce(
-          (a, { source: { location: { longitude, latitude }, city: { id } }, probes }) => (
-            (!!a[id])
+        const located = Object.values(sources.filter((x) => (!!x.source && !!x.source.location)).reduce(
+          (a, { source: { location: { longitude, latitude }, city, country }, probes }) => (
+            (!!a[city.id])
               ? {
                   ...a,
-                  [id]: {
-                    ...a[id],
-                    probes: (a[id].probes + probes),
+                  [city.id]: {
+                    ...a[city.id],
+                    probes: (a[city.id].probes + probes),
                   }
                 }
               : {
                   ...a,
-                  [id]: {
-                    id,
+                  [city.id]: {
+                    id: city.id,
                     coordinates: [longitude, latitude],
                     probes,
+                    city,
+                    country,
                   }
                 }
           ),
@@ -77,7 +83,17 @@ function ProbeSourceStats() {
     <Fragment>
       <Row>
         <h2>deflected probe origins</h2>
-        <h3>last 24 hours</h3>
+        {
+          (!!locations)
+            ? (
+                <h3>
+                  {
+                    new Intl.NumberFormat().format(locations.reduce((sum, { probes }) => (sum + probes), 0))
+                  } probes in the last 24 hours
+                </h3>
+              )
+            : null
+        }
       </Row>
       <Row>
         <Col>
@@ -108,19 +124,37 @@ function ProbeSourceStats() {
                         ))
                       }
                     </Geographies>
-                    {locations.map(({ id, coordinates, probes }) => {
+                    {locations.map(({ coordinates, probes, city, country }, i) => {
                       return (
-                        <Marker key={id} coordinates={coordinates}>
-                          <circle fill="rgba(255, 85, 51, 0.5)" stroke="#ffffff" r={popScale(probes)} />
-                        </Marker>
+                        <Fragment key={city.id}>
+                          <Marker coordinates={coordinates}>
+                            <circle fill="rgba(255, 85, 51, 0.5)" stroke="#ffffff" r={popScale(probes)} />
+                          </Marker>
+                          <Annotation
+                            subject={coordinates}
+                            dx={0}
+                            dy={(probes % 2) ? 60 : -60}
+                            connectorProps={{
+                              stroke: "rgba(0, 0, 0, 0.1)",
+                              strokeWidth: 1,
+                              strokeLinecap: "round"
+                            }}
+                          >
+                            <text x="-8" textAnchor="end" alignmentBaseline="middle" fill="rgba(0, 0, 0, 0.2)" style={{fontSize: '50%'}}>
+                              {(!!city && !!city.name) ? `${city.name}, ` : null}
+                              {country.name}: {new Intl.NumberFormat().format(probes)}
+                            </text>
+                          </Annotation>
+                        </Fragment>
                       );
                     })}
                   </ComposableMap>
                 )
               : (
-                  <Spinner animation="border" variant="secondary" size="lg">
-                    <span className="visually-hidden">lookup in progress...</span>
-                  </Spinner>
+                  <Fragment>
+                    <Spinner animation="border" variant="secondary" size="lg" />
+                    <span style={{marginLeft: '0.5em'}}>query in progress...</span>
+                  </Fragment>
                 )
           }
         </Col>
@@ -160,7 +194,6 @@ function ProbeSourceStats() {
                                 ? (
                                     <Fragment>
                                       <Link to={`/origin/${row.source.ip}`}>{row.source.ip}</Link>
-                                      
                                       {
                                         (!!row.source.provider && !!row.source.provider.name)
                                           ? (
@@ -177,7 +210,7 @@ function ProbeSourceStats() {
                           </td>
                           <td>
                             {
-                              (!!row.source)
+                              (!!row.source && !!row.source.location)
                                 ? (
                                     <Fragment>
                                       {row.source.location.longitude}, {row.source.location.latitude}
@@ -199,7 +232,7 @@ function ProbeSourceStats() {
                             }
                           </td>
                           <td style={columns.find((c) => (c.header === 'probes')).style}>
-                            {row.probes}
+                            {new Intl.NumberFormat().format(row.probes)}
                           </td>
                         </tr>
                       ))

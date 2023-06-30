@@ -10,31 +10,32 @@ export const top = async (from, to, limit) => (
       $match: {
         time: {
           $gte: from,
-          $lt: to
-        }
+          $lt: to,
+        },
+        'source.ip': { $ne: '127.0.0.1' },
       }
     },
     {
       $group: {
         _id: '$source.ip',
         probes: {
-          $sum: 1
+          $sum: 1,
         }
       }
     },
     {
       $sort: {
-        probes: -1
+        probes: -1,
       }
     },
     {
-      $limit: limit
+      $limit: limit,
     },
     {
       $project: {
         _id: false,
         ip: '$_id',
-        probes: true
+        probes: true,
       }
     }
   ]).toArray()
@@ -45,8 +46,9 @@ export const recent = async (since) => (
     'source.ip',
     {
       time: {
-        $gte: since
-      }
+        $gte: since,
+      },
+      'source.ip': { $ne: '127.0.0.1' },
     }
   )
 );
